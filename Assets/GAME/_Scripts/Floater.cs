@@ -5,98 +5,74 @@ public class Floater : MonoBehaviour
 {
     private Rigidbody _rigidbody;
 
-    [SerializeField] private LayerMask _layerMask;
-    [SerializeField] private float _rollSpeed;
-    [SerializeField] private float _rotationSpeed;
-    [SerializeField] private float _speedForce;
-    [SerializeField] private float _floatForce;
-    [SerializeField] private float _maxSpeed;
-
-    [SerializeField] private Transform _ship;
-    [SerializeField] private Transform _sail;
-    [SerializeField] private Transform _wind;
-
-    [SerializeField] private float _maxBodyTilt;
-
-    [SerializeField] private float _offsetAboveWater;
-    [SerializeField] private float _long;
-    [SerializeField] private float _offsetX;
-    [SerializeField] private float _offsetY;
-    [SerializeField] private float _amplitude;
+    private LayerMask _layerMask;
+    private float _maxSpeed;
 
     private float _shipInput;
     private float _sailInput;
 
     private RaycastHit _currentHit;
-
     private bool _onWater;
-
-    private float _timer;
-
-    public float rotationSpeed = 80f; 
-    private float _currentSailAngle = 0f; 
+    private InputSystem _inputSystem;
+    private IBehaviour[] _behaviours;
 
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody>();
+    }
+
+    public void Initialize(InputSystem inputSystem, SceneSettings settings, Transform ship, Transform sail,
+        params IBehaviour [] behaviours)
+    {
+        _layerMask = settings.LayerMask;
+        _maxSpeed = settings.MaxSpeed;
+
         _rigidbody.maxLinearVelocity = _maxSpeed;
+
+        _inputSystem = inputSystem;
+
+        _behaviours = behaviours;
     }
 
     private void Update()
     {
-        _timer += Time.deltaTime;
+        if (_behaviours == null)
+            return;
 
-        _onWater = Physics.Raycast(_rigidbody.position + Vector3.up * 15, Vector3.down, out _currentHit, 18f, _layerMask);
+        _onWater = Physics.Raycast(transform.position + Vector3.up * 15, Vector3.down, out _currentHit, 18f, _layerMask);
 
-        if (_onWater)
+        if (_onWater == false)
+            return;
+
+        _shipInput = _inputSystem.GetHorizontalInputAD();
+        _sailInput = _inputSystem.GetHorizontalInputQE();
+
+        foreach (var behaviour in _behaviours)
         {
-            _shipInput = Input.GetAxisRaw("Horizontal");
+            if (behaviour is IUpdatable)
+            {
+                if (behaviour is IShipUpdatable)
+                    ((IShipUpdatable)behaviour).Tick(_shipInput);
 
-            float leftInput = (Input.GetKey(KeyCode.Q)) ? -1 : 0;
-            float rightInput = (Input.GetKey(KeyCode.E)) ? 1 : 0;
-
-            _sailInput = leftInput + rightInput;
-
-            _currentSailAngle += _sailInput * rotationSpeed * Time.deltaTime;
-
-            _currentSailAngle = Mathf.Clamp(_currentSailAngle, -90f, 90f);
-
-            _sail.rotation = _ship.rotation * Quaternion.Euler(0f, _currentSailAngle, 0f);
+                if (behaviour is ISailUpdatable)
+                    ((ISailUpdatable)behaviour).Tick(_sailInput);
+            }
         }
     }
 
     private void FixedUpdate()
     {
-        if (_onWater)
+        if (_onWater == false)
+            return;
+
+        foreach (var behaviour in _behaviours)
         {
-            _rigidbody.AddTorque(transform.up * _shipInput * _rotationSpeed, ForceMode.Acceleration);
+            if (behaviour is IHittable)
+            {
+                ((IHittable)behaviour).Recive(_currentHit);
+            }
 
-            _rigidbody.AddTorque(Vector3.Cross(transform.up, _currentHit.normal) * _rollSpeed, ForceMode.Acceleration);
-
-            _rigidbody.AddTorque(transform.forward * _shipInput * _maxBodyTilt, ForceMode.Acceleration);
-
-            _rigidbody.AddForce(transform.forward * GetMovingForce(_speedForce), ForceMode.Acceleration);
-
-            Vector3 direction = (_currentHit.point + Vector3.up * _offsetAboveWater) - transform.position;
-
-            Vector3 floating = (Vector3.up * (Mathf.Sin(_timer * _long + _offsetX) * _amplitude + _offsetY));
-
-            _rigidbody.velocity = direction * _floatForce + floating;
+            behaviour.Execute();
         }
-    }
-
-    private float GetMovingForce(float maxSpeedForce)
-    {
-        float value = maxSpeedForce *
-              Vector3.Dot(_ship.forward, _sail.forward) *
-              Vector3.Dot(_wind.forward, _sail.forward);
-
-        return Mathf.Max(value, 0f);
-    }
-
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.red;
-        Gizmos.DrawRay(transform.position + Vector3.up * 15, Vector3.down * 18f);
     }
 }

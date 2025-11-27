@@ -2,30 +2,39 @@ using System.Collections.Generic;
 using Cinemachine;
 using UnityEngine;
 
-public class CameraViewChanger : MonoBehaviour
+public class CameraViewChanger
 {
-    [SerializeField] private List<CinemachineVirtualCamera> _cameras = new List<CinemachineVirtualCamera>();
-
     private Queue<CinemachineVirtualCamera> _camerasQueue = new Queue<CinemachineVirtualCamera>();
+    private Transform _target;
 
-    private void Awake()
+    public CameraViewChanger(List<CinemachineVirtualCamera> cameras, Transform target)
     {
-        foreach (var camera in _cameras)
+        _target = target;
+
+        foreach (var camera in cameras)
             _camerasQueue.Enqueue(camera);
+
+        SetTarget();
     }
 
-    private void Update()
+    public void ChangeView()
     {
-        if (Input.GetKeyDown(KeyCode.F))
+        CinemachineVirtualCamera currentCamera = _camerasQueue.Dequeue();
+
+        currentCamera.gameObject.SetActive(true);
+
+        foreach (var camera in _camerasQueue)
+            camera.gameObject.SetActive(false);
+
+        _camerasQueue.Enqueue(currentCamera);
+    }
+
+    private void SetTarget()
+    {
+        foreach (var camera in _camerasQueue)
         {
-            CinemachineVirtualCamera currentCamera = _camerasQueue.Dequeue();
-
-            currentCamera.gameObject.SetActive(true);
-
-            foreach (var camera in _camerasQueue)
-                camera.gameObject.SetActive(false);
-
-            _camerasQueue.Enqueue(currentCamera);
+            camera.Follow = _target;
+            camera.LookAt = _target;
         }
     }
 }
