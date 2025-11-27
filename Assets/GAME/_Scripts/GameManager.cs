@@ -71,8 +71,7 @@ public class GameManager : MonoBehaviour
 
             var behaviours = CreateBehaviours(rigidbody, physicRotator, floater, sail, flag);
 
-            floater.Initialize(_inputSystem, SceneSettings, floater.transform, sail.transform,
-                behaviours.ToArray());
+            floater.Initialize(_inputSystem, SceneSettings, behaviours.ToArray());
         }
     }
 

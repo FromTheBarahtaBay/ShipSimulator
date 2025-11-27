@@ -21,8 +21,7 @@ public class Floater : MonoBehaviour
         _rigidbody = GetComponent<Rigidbody>();
     }
 
-    public void Initialize(InputSystem inputSystem, SceneSettings settings, Transform ship, Transform sail,
-        params IBehaviour [] behaviours)
+    public void Initialize(InputSystem inputSystem, SceneSettings settings, params IBehaviour [] behaviours)
     {
         _layerMask = settings.LayerMask;
         _maxSpeed = settings.MaxSpeed;
